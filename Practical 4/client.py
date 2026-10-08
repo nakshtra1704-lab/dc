@@ -1,0 +1,10 @@
+import xmlrpc.client
+
+if __name__ == "__main__":
+    remote_object = xmlrpc.client.ServerProxy("http://localhost:8000/")
+
+    response_msg = remote_object.say_hello("Affan")
+    print("Response from Server:", response_msg)
+
+    response_msg = remote_object.add_numbers(50 , 25)   
+    print("Sum from Server:", response_msg)
