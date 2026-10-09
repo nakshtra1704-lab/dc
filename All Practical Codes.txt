@@ -1,6 +1,50 @@
 DC LAB MANUAL — ALL PRACTICAL CODES
 Combined source files, grouped by practical. Empty source files are marked explicitly.
 
+
+
+
+
+
+
+
+
+
+
+
+Concurrent Echo Client Server Application
+AIM: To implement a concurrent TCP echo server that can handle multiple clients.
+
+Swapping Variable Values Using IPC Through Thread Programming in Java
+AIM: To swap two variable values using a shared object accessed by threads.
+
+Implement Remote Procedure Call (RPC) Chat Server
+AIM: To implement a simple RPC-style chat between a client and server. The detailed section heading calls it “Remote Procedure Call (RPC) Chat Server Implementation.”
+
+Implement Remote Method Invocation (RMI)
+AIM: To implement a simple remote method invocation between a client and server.
+
+Increment a Counter in Shared Memory
+AIM: To increment a common counter safely using synchronized access.
+
+Implement Stateful Server and Stateless Server
+AIM: To understand and implement stateful and stateless server behavior.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ==============================================================================
 PRACTICAL 1 (TOP-LEVEL FILE)
 FILE: p1serv.py
@@ -460,3 +504,4 @@ try:
 except KeyboardInterrupt:
     print("\nStateless server stopped")
     server.server_close()
+/run/media/nikshay/5C02B1B802B1980A/
