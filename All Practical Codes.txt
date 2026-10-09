@@ -1,0 +1,462 @@
+DC LAB MANUAL — ALL PRACTICAL CODES
+Combined source files, grouped by practical. Empty source files are marked explicitly.
+
+==============================================================================
+PRACTICAL 1 (TOP-LEVEL FILE)
+FILE: p1serv.py
+==============================================================================
+import socket
+import threading
+
+def handle_client(conn):
+    while True:
+        data = conn.recv(1024)
+        if not data:
+            break
+    conn.sendall(data)
+
+
+def start_server():
+    server = socket.socket()
+    server.bind(("localhost",5000))
+    server.listen(5)
+    print("d")
+    while True:
+        conn,addr = server.accept()
+        threading.Thread(target=handle_client, args=(conn,), daemon=True)
+
+start_server()
+
+==============================================================================
+PRACTICAL 1
+FILE: Practical 1/client.py
+==============================================================================
+import socket
+
+client = socket.socket()
+client.connect(('localhost', 5000))
+
+msg = input("Enter message to send: ")
+client.sendall(msg.encode())
+
+response = client.recv(1024).decode()
+print("Server Echoed:", response)
+
+client.close()
+
+==============================================================================
+PRACTICAL 1
+FILE: Practical 1/echo_client.py
+==============================================================================
+import argparse
+import socket     
+def run_client(host, port):
+    """Connect to an echo server and exchange interactive messages."""
+    try:
+        with socket.create_connection((host, port)) as connection:
+            with connection.makefile("rwb") as stream:
+                print(f"Connected to {host}:{port}")
+                print("Type a message and press Enter. Type 'exit' to close.")
+
+                while True:
+                    message = input("> ")
+                    stream.write(f"{message}\n".encode("utf-8"))
+                    stream.flush()
+
+                    echo = stream.readline()
+                    if not echo:
+                        print("Server closed the connection.")
+                        return 1
+
+                    print(f"Echo from server: {echo.decode('utf-8').rstrip()}")
+                    if message.strip().lower() == "exit":
+                        return 0
+    except ConnectionRefusedError:
+        print(f"Connection refused: no server is running on {host}:{port}.")
+        print(f"Run 'python echo_server.py {port}' in another terminal first.")
+        print("Or run 'python run_echo.py' to start both automatically.")
+        return 1
+    except OSError as error:
+        print(f"Client error: {error}")
+        return 1
+    except (EOFError, KeyboardInterrupt):
+        print("\nClient stopped.")
+        return 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Connect to a TCP echo server.")
+    parser.add_argument("host", nargs="?", default="localhost")
+    parser.add_argument("port", nargs="?", type=int, default=5000)
+    arguments = parser.parse_args()
+
+    return run_client(arguments.host, arguments.port)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+==============================================================================
+PRACTICAL 1
+FILE: Practical 1/echo_server.py
+==============================================================================
+"""Concurrent TCP echo server."""
+
+import argparse
+import socketserver
+
+
+class EchoRequestHandler(socketserver.StreamRequestHandler):
+    """Echo each newline-delimited message from one client."""
+
+    def handle(self):
+        client_address = f"{self.client_address[0]}:{self.client_address[1]}"
+        print(f"Client connected: {client_address}")
+
+        for message in self.rfile:
+            self.wfile.write(message)
+            self.wfile.flush()
+
+            if message.decode("utf-8").strip().lower() == "exit":
+                break
+
+        print(f"Client disconnected: {client_address}")
+
+
+class ConcurrentEchoServer(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+
+def create_server(port):
+    """Create a concurrent echo server listening on the given port."""
+    return ConcurrentEchoServer(("", port), EchoRequestHandler)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Run a concurrent TCP echo server.")
+    parser.add_argument("port", nargs="?", type=int, default=5000)
+    arguments = parser.parse_args()
+
+    with create_server(arguments.port) as server:
+        print(f"Concurrent echo server started on port {arguments.port}")
+        print("Press Ctrl+C to stop the server.")
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("\nServer stopped.")
+
+
+if __name__ == "__main__":
+    main()
+
+==============================================================================
+PRACTICAL 1
+FILE: Practical 1/run_echo.py
+==============================================================================
+"""Start a local concurrent echo server and interactive client together."""
+
+import argparse
+import threading
+
+from echo_client import run_client
+from echo_server import create_server
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run a local concurrent echo server and client."
+    )
+    parser.add_argument("port", nargs="?", type=int, default=5000)
+    arguments = parser.parse_args()
+
+    try:
+        server = create_server(arguments.port)
+    except OSError as error:
+        print(f"Could not start the server on port {arguments.port}: {error}")
+        return 1
+
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    print(f"Local concurrent echo server started on port {arguments.port}")
+
+    try:
+        return run_client("localhost", arguments.port)
+    finally:
+        server.shutdown()
+        server.server_close()
+        server_thread.join()
+        print("Local server stopped.")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+==============================================================================
+PRACTICAL 1
+FILE: Practical 1/server.py
+==============================================================================
+import socket
+import threading
+
+
+def handle_client(conn):
+    while True:
+        data = conn.recv(1024)
+        if not data:
+            break
+        conn.sendall(data)
+    conn.close()
+
+
+def start_server():
+    server = socket.socket()
+    server.bind(('localhost', 5000))
+    server.listen(5)
+    print("server running")
+
+    while True:
+        conn, addr = server.accept()
+        print("Connected by", addr)
+        threading.Thread(target=handle_client, args=(conn,), daemon=True).start()
+
+
+if __name__ == "__main__":
+    start_server()
+
+==============================================================================
+PRACTICAL 2
+FILE: Practical 2/ipc_swap.py
+==============================================================================
+import threading
+
+a= 20
+b= 50
+
+condition = threading.Condition()
+ready = False
+
+def thread1():
+    global ready
+
+    with condition:
+        print("Before Swapping:")
+        print("a =", a)
+        print("b =", b)
+
+        ready = True
+        condition.notify()
+
+def thread2():
+    global a, b
+
+    with condition:
+        while not ready:
+            condition.wait()
+
+            temp = a
+            a= b
+            b= temp
+
+            print("\nAfter Swapping:")
+            print("a =", a)
+            print("b =", b)
+
+t1 = threading.Thread(target=thread1)
+t2 = threading.Thread(target=thread2)
+
+t2.start()
+t1.start()
+
+t1.join()
+t2.join()
+            
+        
+
+==============================================================================
+PRACTICAL 3
+FILE: Practical 3/client.py
+==============================================================================
+import xmlrpc.client
+
+client = xmlrpc.client.ServerProxy("http://127.0.0.1:8000")
+print(client.send_message("MCA STUDENTS", "Parul University"))
+print(client.send_message("Rahul", "BCA Students"))
+
+print("\nChat Messages:")
+for msg in client.get_messages():
+    print(msg)
+    
+
+==============================================================================
+PRACTICAL 3
+FILE: Practical 3/server.py
+==============================================================================
+from xmlrpc.server import SimpleXMLRPCServer
+
+messages = []
+
+def send_message(name, msg):
+    messages.append(f"{name}: {msg}")
+    return "Message sent!"
+
+def get_messages():
+    return messages
+
+server = SimpleXMLRPCServer(("127.0.0.1", 8000), allow_none=True)
+
+server.register_function(send_message)
+server.register_function(get_messages)
+
+print("RPC Chat Server Started...")
+
+try:
+    server.serve_forever()
+except KeyboardInterrupt:
+    print("\nServer Stopped")
+
+==============================================================================
+PRACTICAL 4
+FILE: Practical 4/client.java
+==============================================================================
+[EMPTY FILE — no code present]
+
+==============================================================================
+PRACTICAL 4
+FILE: Practical 4/client.py
+==============================================================================
+import xmlrpc.client
+
+if __name__ == "__main__":
+    remote_object = xmlrpc.client.ServerProxy("http://localhost:8000/")
+
+    response_msg = remote_object.say_hello("Affan")
+    print("Response from Server:", response_msg)
+
+    response_msg = remote_object.add_numbers(50 , 25)   
+    print("Sum from Server:", response_msg)
+
+==============================================================================
+PRACTICAL 4
+FILE: Practical 4/server.java
+==============================================================================
+[EMPTY FILE — no code present]
+
+==============================================================================
+PRACTICAL 4
+FILE: Practical 4/server.py
+==============================================================================
+from xmlrpc.server import SimpleXMLRPCServer
+
+class RMIService:
+
+    def say_hello(self,name):
+        return f"Hello {name}, Remote Method Executed Succesfully"
+
+    def add_numbers(self, a, b):
+            return a + b
+
+if __name__ == "__main__":
+    server = SimpleXMLRPCServer(("localhost", 8000))
+    print("RMI Server running on port 8000")
+    server.register_instance(RMIService())
+    server.serve_forever()
+    
+
+==============================================================================
+PRACTICAL 5
+FILE: Practical 5/counter.py
+==============================================================================
+import threading
+
+counter = 0
+lock = threading.Lock()
+def increment():
+    global counter
+    for i in range(1000):
+        with lock:
+            counter += 1
+
+t1 = threading.Thread(target=increment)
+t2 = threading.Thread(target=increment)
+
+t1.start()
+t2.start()
+t1.join()
+t2.join()
+
+print("Final counter value:", counter)
+
+==============================================================================
+PRACTICAL 6
+FILE: Practical 6/stateful_client.py
+==============================================================================
+import xmlrpc.client
+
+
+server = xmlrpc.client.ServerProxy("http://127.0.0.1:8001/")
+
+for request_number in range(1, 4):
+    count = server.increment()
+    print(f"Request {request_number}: server counter = {count}")
+
+==============================================================================
+PRACTICAL 6
+FILE: Practical 6/stateful_server.py
+==============================================================================
+from xmlrpc.server import SimpleXMLRPCServer
+
+
+class StatefulCounter:
+    def __init__(self):
+        self.count = 0
+
+    def increment(self):
+        self.count += 1
+        return self.count
+
+
+server = SimpleXMLRPCServer(("127.0.0.1", 8001), allow_none=True)
+server.register_instance(StatefulCounter())
+print("Stateful server running on port 8001")
+
+try:
+    server.serve_forever()
+except KeyboardInterrupt:
+    print("\nStateful server stopped")
+    server.server_close()
+
+==============================================================================
+PRACTICAL 6
+FILE: Practical 6/stateless_client.py
+==============================================================================
+import xmlrpc.client
+
+
+server = xmlrpc.client.ServerProxy("http://127.0.0.1:8002/")
+value = 0
+
+for request_number in range(1, 4):
+    value = server.increment(value)
+    print(f"Request {request_number}: client value = {value}")
+
+==============================================================================
+PRACTICAL 6
+FILE: Practical 6/stateless_server.py
+==============================================================================
+from xmlrpc.server import SimpleXMLRPCServer
+
+
+def increment(value):
+    return value + 1
+
+
+server = SimpleXMLRPCServer(("127.0.0.1", 8002), allow_none=True)
+server.register_function(increment, "increment")
+print("Stateless server running on port 8002")
+
+try:
+    server.serve_forever()
+except KeyboardInterrupt:
+    print("\nStateless server stopped")
+    server.server_close()
